@@ -22,9 +22,9 @@ To deploy this project run
 
 2)Extract the .zip file and get inside the repo
 
-3)open ytdownloader.exe
+3)open ytdownloader.exe and paste video or playlist url and press enter.
 
-4)You can go thorugh the following example 
+4)Theres one more way to download the video using cmd or powershell .You can go thorugh the following example 
 
 HELP:-
 ```bash
