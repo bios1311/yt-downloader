@@ -104,7 +104,7 @@ func downloadvideo(videoID string) {
 	}
 	formats := video.Formats.WithAudioChannels()
 
-	stream, _, err := client.GetStream(video, &formats[3])
+	stream, _, err := client.GetStream(video, &formats[2])
 	if err != nil {
 		panic(err)
 	}
@@ -158,7 +158,7 @@ func downpsimple(client *youtube.Client, playlist *youtube.Playlist) {
 
 		fmt.Printf("Downloading %s by '%s'!\n", video.Title, video.Author)
 		formats := video.Formats.WithAudioChannels()
-		stream, _, err := client.GetStream(video, &formats[3])
+		stream, _, err := client.GetStream(video, &formats[2])
 		if err != nil {
 			panic(err)
 		}
@@ -195,7 +195,7 @@ func downpsimple(client *youtube.Client, playlist *youtube.Playlist) {
 
 // 	fmt.Printf("Downloading %s by '%s'!\n", video.Title, video.Author)
 // 	formats := video.Formats.WithAudioChannels()
-// 	stream, _, err := client.GetStream(video, &formats[3])
+// 	stream, _, err := client.GetStream(video, &formats[2])
 // 	if err != nil {
 // 		panic(err)
 // 	}
