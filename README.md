@@ -22,7 +22,9 @@ To deploy this project run
 
 2)Extract the .zip file and get inside the repo
 
-3)You can go thorugh the following example 
+3)open ytdownloader.exe
+
+4)You can go thorugh the following example 
 
 HELP:-
 ```bash
