@@ -18,46 +18,53 @@ func main() {
 	playlis := pflag.String("playlist", "", "Playlist id to passed(DEFALUT:EMPTY)")
 	vid := pflag.String("video", "", "Video id to be passed here(DEFALUT:EMPTY)")
 	pflag.Parse()
-	var play string
-	fmt.Printf("Enter playlist url  or video url :\n")
-	fmt.Scan(&play)
 
 	os.Mkdir("./videos", 0777)
 	os.Mkdir("./songs", 0777)
-	_, err := ExtractPlayistId(play)
-	if err != nil {
-		id, err := youtube.ExtractVideoID(play)
-		if err != nil {
-			panic(err)
+	if len(*playlis_url) > 0 || len(*video_url) > 0 || len(*video_url) > 0 || len(*vid) > 0 {
+		if len(*playlis) != 0 {
+			client, playlist := seekplaylist(*playlis)
+			downpsimple(client, playlist)
+		} else if len(*vid) != 0 {
+			downloadvideo(*vid)
+		} else if len(*playlis_url) != 0 {
+			pid, err := ExtractPlayistId(*playlis_url)
+			if err != nil {
+				panic(err)
+			}
+			client, playlist := seekplaylist(pid)
+			downpsimple(client, playlist)
+		} else if len(*video_url) != 0 {
+			vidid, err := youtube.ExtractVideoID(*video_url)
+			if err != nil {
+				panic(err)
+			}
+			downloadvideo(vidid)
+		} else {
+			fmt.Println("Provide playlist id or video id or playlist url or video url:\nExample for video https://www.youtube.com/watch?v=1gEhUnwc8GA\n 1gEhUnwc8GA is id\nhttps://www.youtube.com/list=shkdbhksdbck\nshkdbhksdbck is playlist id")
 		}
-		downloadvideo(id)
 	} else {
-		client, playlist := seekplaylist(play)
-		downpsimple(client, playlist)
+		var play string
+		fmt.Printf("Enter playlist url  or video url :\n")
+		fmt.Scan(&play)
+
+		_, err := ExtractPlayistId(play)
+		if err != nil {
+			id, err := youtube.ExtractVideoID(play)
+			if err != nil {
+				panic(err)
+
+			}
+			downloadvideo(id)
+
+		} else {
+			client, playlist := seekplaylist(play)
+			downpsimple(client, playlist)
+
+		}
 	}
 
 	//downloadplaylist(client, playlist)
-	if len(*playlis) != 0 {
-		client, playlist := seekplaylist(*playlis)
-		downpsimple(client, playlist)
-	} else if len(*vid) != 0 {
-		downloadvideo(*vid)
-	} else if len(*playlis_url) != 0 {
-		pid, err := ExtractPlayistId(*playlis_url)
-		if err != nil {
-			panic(err)
-		}
-		client, playlist := seekplaylist(pid)
-		downpsimple(client, playlist)
-	} else if len(*video_url) != 0 {
-		vidid, err := youtube.ExtractVideoID(*video_url)
-		if err != nil {
-			panic(err)
-		}
-		downloadvideo(vidid)
-	} else {
-		fmt.Println("Provide playlist id or video id or playlist url or video url:\nExample for video https://www.youtube.com/watch?v=1gEhUnwc8GA\n 1gEhUnwc8GA is id\nhttps://www.youtube.com/list=shkdbhksdbck\nshkdbhksdbck is playlist id")
-	}
 
 }
 func ExtractPlayistId(url string) (string, error) {
