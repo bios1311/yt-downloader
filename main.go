@@ -60,8 +60,8 @@ func main() {
 
 		} else {
 			client, playlist := seekplaylist(play)
-			downpsimple(client, playlist)
-
+			//downpsimple(client, playlist)
+			download_parallel(client, playlist)
 		}
 	}
 
@@ -194,41 +194,46 @@ func downpsimple(client *youtube.Client, playlist *youtube.Playlist) {
 
 }
 
-func worker(client *youtube.Client, playlist *youtube.Playlist, video_det_obj  chan *video_det, done chan struct{} ) {
-	
-	video_det_obj.
-	// for video  := range video_det_obj.{
-	// 	fmt.Printf("Downloading %s by '%s'!\n", video.Title, video.Author)
-	// 	formats := video.Formats.WithAudioChannels()
-	// 	stream, _, err := client.GetStream(video, &formats[2])
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-	// 	inpname := fmt.Sprint(videoname(PlaylistEntry.Title), ".mp4")
-	// 	outpname := fmt.Sprint(videoname(PlaylistEntry.Title), ".mp3")
-	// 	file, err := os.Create("./videos/" + inpname)
+func worker(client *youtube.Client, playlist *youtube.Playlist, video_det_obj <-chan *video_det, done chan struct{}) {
+	wg := sync.WaitGroup{}
+	for video_ := range video_det_obj {
 
-	// 	if err != nil {
-	// 		log.Print(err)
-	// 	}
+		video := video_.Video
+		PlaylistEntry := video_.PlaylistEntry
+		fmt.Printf("Downloading %s by '%s'!\n", video.Title, video.Author)
+		formats := video.Formats.WithAudioChannels()
+		stream, _, err := client.GetStream(video, &formats[2])
+		if err != nil {
+			panic(err)
+		}
+		inpname := fmt.Sprint(videoname(PlaylistEntry.Title), ".mp4")
+		outpname := fmt.Sprint(videoname(PlaylistEntry.Title), ".mp3")
+		file, err := os.Create("./videos/" + inpname)
 
-	// 	defer file.Close()
-	// 	_, err = io.Copy(file, stream)
+		if err != nil {
+			log.Print(err)
+		}
 
-	// 	if err != nil {
-	// 		log.Print(err)
-	// 	}
+		_, err = io.Copy(file, stream)
 
-	// 	println("Downloaded :" + inpname)
-	// }
+		if err != nil {
+			log.Print(err)
+		}
+		wg.Add(1)
+		go convert(inpname, outpname, &wg)
+		println("Downloaded :" + inpname)
+	}
+	wg.Wait()
+	done <- struct{}{}
+
 }
 
 func download_parallel(client *youtube.Client, playlist *youtube.Playlist) {
-	video_chan := make(chan *video_det,10)
+	video_chan := make(chan *video_det, 10)
 	done := make(chan struct{})
 	//worker pool creation with 5 workers
 	for i := 0; i < 5; i++ {
-		go worker(client , playlist ,video_chan , done)
+		go worker(client, playlist, video_chan, done)
 	}
 
 	for _, PlaylistEntry := range playlist.Videos {
@@ -239,14 +244,22 @@ func download_parallel(client *youtube.Client, playlist *youtube.Playlist) {
 		}
 		// Now it's fully loaded.
 		video_chan <- &video_det{
-			Video: video,
+			Video:         video,
 			PlaylistEntry: PlaylistEntry,
 		}
 	}
-
+	i := 0
+	for {
+		select {
+		case <-done:
+			log.Printf("Download:%v finished", i)
+			i++
+		}
+	}
 
 }
-type video_det struct{
-	Video *youtube.Video
+
+type video_det struct {
+	Video         *youtube.Video
 	PlaylistEntry *youtube.PlaylistEntry
 }
