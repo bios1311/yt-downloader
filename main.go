@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -133,6 +134,7 @@ func downloadvideo(videoID string) {
 	wg.Wait()
 }
 
+// seek playlist prints all videos info that are in the playlist
 func seekplaylist(playlistid string) (*youtube.Client, *youtube.Playlist) {
 
 	client := youtube.Client{}
@@ -174,14 +176,14 @@ func downpsimple(client *youtube.Client, playlist *youtube.Playlist) {
 		file, err := os.Create("./videos/" + inpname)
 
 		if err != nil {
-			panic(err)
+			log.Print(err)
 		}
 
 		defer file.Close()
 		_, err = io.Copy(file, stream)
 
 		if err != nil {
-			panic(err)
+			log.Print(err)
 		}
 
 		println("Downloaded :" + inpname)
@@ -192,71 +194,59 @@ func downpsimple(client *youtube.Client, playlist *youtube.Playlist) {
 
 }
 
-// func download(k int, p *youtube.PlaylistEntry, client *youtube.Client) {
+func worker(client *youtube.Client, playlist *youtube.Playlist, video_det_obj  chan *video_det, done chan struct{} ) {
+	
+	video_det_obj.
+	// for video  := range video_det_obj.{
+	// 	fmt.Printf("Downloading %s by '%s'!\n", video.Title, video.Author)
+	// 	formats := video.Formats.WithAudioChannels()
+	// 	stream, _, err := client.GetStream(video, &formats[2])
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+	// 	inpname := fmt.Sprint(videoname(PlaylistEntry.Title), ".mp4")
+	// 	outpname := fmt.Sprint(videoname(PlaylistEntry.Title), ".mp3")
+	// 	file, err := os.Create("./videos/" + inpname)
 
-// 	video, err := client.VideoFromPlaylistEntry(p)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	// Now it's fully loaded.
+	// 	if err != nil {
+	// 		log.Print(err)
+	// 	}
 
-// 	fmt.Printf("Downloading %s by '%s'!\n", video.Title, video.Author)
-// 	formats := video.Formats.WithAudioChannels()
-// 	stream, _, err := client.GetStream(video, &formats[2])
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	filename := fmt.Sprint("video", k, ".mp3")
-// 	file, err := os.Create("./songs/" + filename)
-// 	if err != nil {
-// 		panic(err)
-// 	}
+	// 	defer file.Close()
+	// 	_, err = io.Copy(file, stream)
 
-// 	defer file.Close()
-// 	_, err = io.Copy(file, stream)
+	// 	if err != nil {
+	// 		log.Print(err)
+	// 	}
 
-// 	if err != nil {
-// 		panic(err)
-// 	}
+	// 	println("Downloaded :" + inpname)
+	// }
+}
 
-// 	println("Downloaded :" + filename)
+func download_parallel(client *youtube.Client, playlist *youtube.Playlist) {
+	video_chan := make(chan *video_det,10)
+	done := make(chan struct{})
+	//worker pool creation with 5 workers
+	for i := 0; i < 5; i++ {
+		go worker(client , playlist ,video_chan , done)
+	}
 
-// }
-// func downloadplaylist(client *youtube.Client, playlist *youtube.Playlist) {
-// 	jobs := make(chan data)
-// 	avach := make(chan struct{})
-// 	wg := sync.WaitGroup{}
-// 	for w := 0; w < 5; w++ {
-// 		wg.Add(1)
-// 		go func() {
-// 			defer wg.Done()
-// 			for {
-// 				select {
+	for _, PlaylistEntry := range playlist.Videos {
 
-// 				case job := <-jobs:
-// 					download(job.key, job.PlaylistEntry, job.client)
-// 					avach <- struct{}{}
-// 				case <-avach:
+		video, err := client.VideoFromPlaylistEntry(PlaylistEntry)
+		if err != nil {
+			panic(err)
+		}
+		// Now it's fully loaded.
+		video_chan <- &video_det{
+			Video: video,
+			PlaylistEntry: PlaylistEntry,
+		}
+	}
 
-// 				}
-// 			}
-// 		}()
-// 	}
 
-// 	for key, PlaylistEntry := range playlist.Videos {
-// 		job := &data{
-// 			key:           key,
-// 			PlaylistEntry: PlaylistEntry,
-// 			client:        client,
-// 		}
-// 		jobs <- *job
-// 		close(jobs)
-// 	}
-// 	wg.Wait()
-// }
-
-// type data struct {
-// 	key           int
-// 	PlaylistEntry *youtube.PlaylistEntry
-// 	client        *youtube.Client
-// }
+}
+type video_det struct{
+	Video *youtube.Video
+	PlaylistEntry *youtube.PlaylistEntry
+}
