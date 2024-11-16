@@ -3,17 +3,22 @@ package main
 import (
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"os/exec"
 	"strings"
 	"sync"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"github.com/kkdai/youtube/v2"
 	"github.com/spf13/pflag"
 )
 
 func main() {
+
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	log.Info().Msg("Starting yt downloader\n")
 	playlis_url := pflag.String("urlplay", "", "Enter the url/link of playlist (DEFAULT:EMPTY)")
 	video_url := pflag.String("vidurl", "", "Video url to be passed here(DEFALUT:EMPTY)")
 	playlis := pflag.String("playlist", "", "Playlist id to passed(DEFALUT:EMPTY)")
@@ -48,12 +53,11 @@ func main() {
 		var play string
 		fmt.Printf("Enter playlist url  or video url :\n")
 		fmt.Scan(&play)
-
 		_, err := ExtractPlayistId(play)
 		if err != nil {
 			id, err := youtube.ExtractVideoID(play)
 			if err != nil {
-				panic(err)
+				log.Error().Msgf("errror occured=%v", err)
 
 			}
 			downloadvideo(id)
@@ -76,8 +80,8 @@ func ExtractPlayistId(url string) (string, error) {
 	return urlslice[len(urlslice)-1], nil
 }
 
-func convert(inputVideo string, outputMP3 string, wg *sync.WaitGroup) {
-	defer wg.Done()
+func convert(inputVideo string, outputMP3 string) {
+
 	inputVideo = fmt.Sprint("./videos/", inputVideo)
 	outputMP3 = fmt.Sprint("./songs/", outputMP3)
 
@@ -85,6 +89,8 @@ func convert(inputVideo string, outputMP3 string, wg *sync.WaitGroup) {
 	err := cmd.Run()
 	if err != nil {
 		fmt.Println("Error converting video:", err)
+		cmd := exec.Command("./ffmpeg.exe", "-i", inputVideo, "-vn", "-acodec", "libmp3lame", outputMP3)
+		cmd.Run()
 	} else {
 		fmt.Println("MP3 conversion successful!")
 	}
@@ -105,33 +111,39 @@ func videoname(unformatted_name string) string {
 }
 func downloadvideo(videoID string) {
 	client := youtube.Client{}
-	wg := &sync.WaitGroup{}
+
 	video, err := client.GetVideo(videoID)
 	if err != nil {
-		panic(err)
+		log.Error().Msgf("an error occured= %v", err)
 	}
 	formats := video.Formats.WithAudioChannels()
 
-	stream, _, err := client.GetStream(video, &formats[2])
+	stream, _, err := client.GetStream(video, &formats[0])
 	if err != nil {
-		panic(err)
+		log.Error().Msgf("an error occured=%v", err)
 	}
-	defer stream.Close()
-	inpname := fmt.Sprint(videoname(video.Title), ".mp4")
-	outpname := fmt.Sprint(videoname(video.Title), ".mp3")
-	file, err := os.Create("./videos/" + inpname)
+
+	vidname := fmt.Sprint(videoname(video.Title), ".mp4")
+	songpname := fmt.Sprint(videoname(video.Title), ".mp3")
+
 	if err != nil {
-		panic(err)
+		log.Error().Msgf("error while conversion to the byte = %v", err)
 	}
-	defer file.Close()
+
+	file, err := os.Create("./videos/" + vidname)
+	if err != nil {
+		log.Error().Msgf("an error occured= %v", err)
+		
+
+	}
 
 	_, err = io.Copy(file, stream)
 	if err != nil {
-		panic(err)
+		log.Error().Msgf("an error occured= %v", err)
 	}
-	wg.Add(1)
-	go convert(inpname, outpname, wg)
-	wg.Wait()
+
+	convert(vidname, songpname)
+
 }
 
 // seek playlist prints all videos info that are in the playlist
@@ -167,42 +179,42 @@ func downpsimple(client *youtube.Client, playlist *youtube.Playlist) {
 
 		fmt.Printf("Downloading %s by '%s'!\n", video.Title, video.Author)
 		formats := video.Formats.WithAudioChannels()
-		stream, _, err := client.GetStream(video, &formats[2])
+		stream, _, err := client.GetStream(video, &formats[0])
 		if err != nil {
-			panic(err)
+			log.Error().Msg("error occuuered while getting stream object")
 		}
 		inpname := fmt.Sprint(videoname(PlaylistEntry.Title), ".mp4")
 		outpname := fmt.Sprint(videoname(PlaylistEntry.Title), ".mp3")
 		file, err := os.Create("./videos/" + inpname)
 
 		if err != nil {
-			log.Print(err)
+			log.Error().Msgf("errror occured=%v", err)
 		}
 
 		defer file.Close()
 		_, err = io.Copy(file, stream)
 
 		if err != nil {
-			log.Print(err)
-		}
+			log.Error().Msgf("errror occured=%v", err)
+		} 
 
 		println("Downloaded :" + inpname)
-		wg.Add(1)
-		go convert(inpname, outpname, &wg)
+
+		go convert(inpname, outpname)
 	}
 	wg.Wait()
 
 }
 
-func worker(client *youtube.Client, playlist *youtube.Playlist, video_det_obj <-chan *video_det, done chan struct{}) {
-	wg := sync.WaitGroup{}
+func worker(client *youtube.Client, video_det_obj <-chan *video_det, wg *sync.WaitGroup) {
+	defer wg.Done()
 	for video_ := range video_det_obj {
 
 		video := video_.Video
 		PlaylistEntry := video_.PlaylistEntry
 		fmt.Printf("Downloading %s by '%s'!\n", video.Title, video.Author)
 		formats := video.Formats.WithAudioChannels()
-		stream, _, err := client.GetStream(video, &formats[2])
+		stream, _, err := client.GetStream(video, &formats[0])
 		if err != nil {
 			panic(err)
 		}
@@ -217,23 +229,23 @@ func worker(client *youtube.Client, playlist *youtube.Playlist, video_det_obj <-
 		_, err = io.Copy(file, stream)
 
 		if err != nil {
-			log.Print(err)
+			log.Error().Msgf("errror occured=%v", err)
+		} else {
+			println("Downloaded :" + inpname)
 		}
-		wg.Add(1)
-		go convert(inpname, outpname, &wg)
-		println("Downloaded :" + inpname)
+		convert(inpname, outpname)
+
 	}
-	wg.Wait()
-	done <- struct{}{}
 
 }
 
 func download_parallel(client *youtube.Client, playlist *youtube.Playlist) {
 	video_chan := make(chan *video_det, 10)
-	done := make(chan struct{})
+	var wg sync.WaitGroup
 	//worker pool creation with 5 workers
 	for i := 0; i < 5; i++ {
-		go worker(client, playlist, video_chan, done)
+		wg.Add(1)
+		go worker(client, video_chan, &wg)
 	}
 
 	for _, PlaylistEntry := range playlist.Videos {
@@ -248,15 +260,8 @@ func download_parallel(client *youtube.Client, playlist *youtube.Playlist) {
 			PlaylistEntry: PlaylistEntry,
 		}
 	}
-	i := 0
-	for {
-		select {
-		case <-done:
-			log.Printf("Download:%v finished", i)
-			i++
-		}
-	}
-
+	close(video_chan)
+	wg.Wait()
 }
 
 type video_det struct {

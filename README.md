@@ -7,14 +7,16 @@ It downloads both the video with audio and audio file separetly.
 
 The entire application is written in golang , however it uses ffmpeg.exe as an external dependency.
 
+## Suggestion
+It is advised to use cli tool for best performance as demonstrated
 
 ## Requirements
-1)WINDOWS OS
+1)WINDOWS OS / LINUX based distribution
 
 2)100MB free disk space
 
 ps - Currently supports only windows os , other OS builds are in progress
-## Deployment
+## Development
 
 To deploy this project run
 
@@ -26,6 +28,7 @@ To deploy this project run
 
 4)Theres one more way to download the video using cmd or powershell .You can go thorugh the following example 
 
+## Deployment
 HELP:-
 ```bash
   ./ytdownloader.exe --help
