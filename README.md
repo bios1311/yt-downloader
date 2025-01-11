@@ -1,8 +1,8 @@
 
-# YouTube Video Downloader
+# YouTube Audio & Video Downloader
 
-This simple App can download any video or playlist on YouTube.
-It downloads both the video with audio and audio file separetly.
+This simple App can download any video or playlist from YouTube and convert it to audio formats like mp3.
+It downloads the video then converts it to audio then save both video and audio.
 
 
 The entire application is written in golang , however it uses ffmpeg.exe as an external dependency.
